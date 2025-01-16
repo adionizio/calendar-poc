@@ -1,12 +1,13 @@
 import { addDays, format } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { ScrollArea } from "./scroll-area";
 import { Calendar } from "./calendar";
 import CustomDay from "./CustomDay";
 import { DayProps } from "react-day-picker";
-import { db } from "@/mocks/db";
 import { TicketCalendarHeader } from "./TicketCalendarHeader";
 import { TicketCalendarFooter } from "./TicketCalendarFooter";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "./sheet";
 
 type DayInfo = {
   price: number | null;
@@ -26,13 +27,21 @@ const TicketCalendar = ({ calendarData, onFetchNext, loading }: Props) => {
   const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   const [areMultipleDays, setAreMultipleDays] = useState<boolean>(false);
   const [numberOfMonths, setNumberOfMonths] = useState(2);
+  const [isContentMounted, setIsContentMounted] = useState(false);
   const calendarContainerRef = useRef<HTMLDivElement | null>(null);
   const isMobile = window.innerWidth <= 768;
-  console.log("calendarData", calendarData);
 
-  if (!calendarData) {
-    return;
-  }
+  if (!calendarData) return null;
+
+  const setRef = useCallback((node: HTMLDivElement | null) => {
+    calendarContainerRef.current = node;
+    if (node) {
+      console.log("Ref assigned:", node);
+      setIsContentMounted(true);
+    } else {
+      setIsContentMounted(false);
+    }
+  }, []);
 
   const handleScroll = async () => {
     if (!calendarContainerRef.current) return;
@@ -50,31 +59,29 @@ const TicketCalendar = ({ calendarData, onFetchNext, loading }: Props) => {
   };
 
   useEffect(() => {
-    const calendarContainer = calendarContainerRef.current;
-    if (!calendarContainer) return;
+    if (!isContentMounted) return;
 
-    calendarContainer.addEventListener("scroll", handleScroll);
+    const calendarContainer = calendarContainerRef.current;
+
+    if (calendarContainer) {
+      calendarContainer.addEventListener("scroll", handleScroll);
+    }
 
     return () => {
-      calendarContainer.removeEventListener("scroll", handleScroll);
+      if (calendarContainer) {
+        calendarContainer.removeEventListener("scroll", handleScroll);
+      }
     };
-  }, [numberOfMonths, loading]);
+  }, [isContentMounted, numberOfMonths, loading]);
 
   const handleSelect = (date: Date) => {
-    // Check if multiple days are not allowed OR if two dates are already selected
     if (!areMultipleDays || selectedDates.length === 2) {
-      // If either condition is true, reset the selection to the newly selected date
       setSelectedDates([date]);
     } else {
-      // Multiple days are allowed, and fewer than two dates are currently selected
-      const firstDate = selectedDates[0]; // Get the first selected date
-
-      // Check if the selected date is the next consecutive day after the first selected date
+      const firstDate = selectedDates[0];
       if (addDays(firstDate, 1).getTime() === date.getTime()) {
-        // If it is consecutive, add the selected date to the array
         setSelectedDates([...selectedDates, date]);
       } else {
-        // If it's not consecutive, reset the selection to the newly selected date
         setSelectedDates([date]);
       }
     }
@@ -97,7 +104,6 @@ const TicketCalendar = ({ calendarData, onFetchNext, loading }: Props) => {
         weekStartsOn={1}
         numberOfMonths={numberOfMonths}
         onMonthChange={onFetchNext}
-        onNextClick={() => console.log("here")}
         formatters={{
           formatWeekdayName: (date) => format(date, "eee"),
         }}
@@ -116,10 +122,7 @@ const TicketCalendar = ({ calendarData, onFetchNext, loading }: Props) => {
 
     if (isMobile) {
       return (
-        <ScrollArea
-          ref={calendarContainerRef}
-          className="overflow-y-auto max-h-[750px]"
-        >
+        <ScrollArea ref={setRef} className="overflow-y-auto max-h-[750px]">
           {calendarContent}
           {loading && (
             <div className="text-center py-4 text-gray-500">
@@ -134,14 +137,34 @@ const TicketCalendar = ({ calendarData, onFetchNext, loading }: Props) => {
   };
 
   return (
-    <div className="w-full">
-      <TicketCalendarHeader
-        areMultipleDays={areMultipleDays}
-        onDaysOptionSelect={handleDaysOptionSelect}
-      />
-      {renderCalendar()}
-      <TicketCalendarFooter handleApply={handleApply} />
-    </div>
+    <>
+      {isMobile ? (
+        <Sheet>
+          <SheetTrigger>Open Calendar</SheetTrigger>
+          <SheetContent className="p-4" side="bottom">
+            <SheetTitle />
+            <TicketCalendarHeader
+              areMultipleDays={areMultipleDays}
+              onDaysOptionSelect={handleDaysOptionSelect}
+            />
+            {renderCalendar()}
+            <TicketCalendarFooter handleApply={handleApply} />
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Popover>
+          <PopoverTrigger>Open Calendar</PopoverTrigger>
+          <PopoverContent className="w-full">
+            <TicketCalendarHeader
+              areMultipleDays={areMultipleDays}
+              onDaysOptionSelect={handleDaysOptionSelect}
+            />
+            {renderCalendar()}
+            <TicketCalendarFooter handleApply={handleApply} />
+          </PopoverContent>
+        </Popover>
+      )}
+    </>
   );
 };
 

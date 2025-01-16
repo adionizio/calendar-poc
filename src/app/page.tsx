@@ -85,30 +85,11 @@ const Home = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col gap-10 p-4">
-        {isMobile ? (
-          <Sheet>
-            <SheetTrigger>Open Calendar</SheetTrigger>
-            <SheetContent className="p-4" side="bottom">
-              <SheetTitle />
-              <TicketCalendar
-                calendarData={calendarData}
-                onFetchNext={fetchNextMonths}
-                loading={loading}
-              />
-            </SheetContent>
-          </Sheet>
-        ) : (
-          <Popover>
-            <PopoverTrigger>Open Calendar</PopoverTrigger>
-            <PopoverContent className="w-full">
-              <TicketCalendar
-                calendarData={calendarData}
-                onFetchNext={fetchNextMonths}
-                loading={loading}
-              />
-            </PopoverContent>
-          </Popover>
-        )}
+        <TicketCalendar
+          calendarData={calendarData}
+          onFetchNext={fetchNextMonths}
+          loading={loading}
+        />
       </div>
     </QueryClientProvider>
   );
